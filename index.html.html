@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solana Synth Node</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .app-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .titlebar {
+            height: 32px;
+            background: #000000;
+            border-bottom: 1px solid #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            -webkit-app-region: drag;
+        }
+
+        .titlebar-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .app-icon {
+            width: 16px;
+            height: 16px;
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            border-radius: 3px;
+        }
+
+        .app-title {
+            font-size: 11px;
+            font-weight: 500;
+            color: #888;
+        }
+
+        .titlebar-controls {
+            display: flex;
+            gap: 8px;
+            -webkit-app-region: no-drag;
+        }
+
+        .titlebar-btn {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-minimize { background: #555; }
+        .btn-close { background: #f44; }
+        .titlebar-btn:hover { opacity: 0.8; }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .header {
+            margin-bottom: 32px;
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 11px;
+            color: #666;
+        }
+
+        .status-section {
+            background: #0f0f0f;
+            border: 1px solid #1a1a1a;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .status-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #333;
+            position: relative;
+        }
+
+        .status-dot.online {
+            background: #8b5cf6;
+            box-shadow: 0 0 12px rgba(139, 92, 246, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .status-text {
+            font-size: 14px;
+            font-weight: 600;
+            color: #888;
+        }
+
+        .status-text.online {
+            color: #8b5cf6;
+        }
+
+        .toggle-btn {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: #888;
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .toggle-btn:hover {
+            border-color: #8b5cf6;
+            color: #8b5cf6;
+        }
+
+        .toggle-btn:disabled:hover {
+            border-color: #333;
+            color: #888;
+        }
+
+        .toggle-btn.online {
+            background: #8b5cf6;
+            border-color: #8b5cf6;
+            color: #fff;
+        }
+
+        .toggle-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .toggle-btn:disabled:hover {
+            border-color: #333;
+            color: #888;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .stat-card {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            border-radius: 6px;
+            padding: 16px;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #e0e0e0;
+        }
+
+        .stat-value.purple {
+            color: #8b5cf6;
+        }
+
+        .stat-unit {
+            font-size: 12px;
+            color: #666;
+            margin-left: 4px;
+        }
+
+        .info-section {
+            background: #0f0f0f;
+            border: 1px solid #1a1a1a;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #1a1a1a;
+            font-size: 12px;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #666;
+        }
+
+        .info-value {
+            color: #e0e0e0;
+            font-weight: 500;
+        }
+
+        .tier-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 4px;
+            color: #8b5cf6;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .footer {
+            margin-top: auto;
+            padding-top: 20px;
+            text-align: center;
+        }
+
+        .connection-status {
+            font-size: 10px;
+            color: #444;
+        }
+
+        .connection-status.connected {
+            color: #8b5cf6;
+        }
+
+        .wallet-section {
+            background: #0f0f0f;
+            border: 1px solid #1a1a1a;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .wallet-header {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .wallet-address {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            border-radius: 4px;
+            padding: 12px;
+            font-size: 11px;
+            color: #888;
+            word-break: break-all;
+            margin-bottom: 12px;
+        }
+
+        .wallet-btn {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: #888;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .wallet-btn:hover {
+            border-color: #8b5cf6;
+            color: #8b5cf6;
+        }
+
+        .activity-log {
+            background: #0f0f0f;
+            border: 1px solid #1a1a1a;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .activity-header {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .activity-item {
+            font-size: 11px;
+            color: #666;
+            padding: 6px 0;
+            border-bottom: 1px solid #1a1a1a;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-time {
+            color: #444;
+            margin-right: 8px;
+        }
+
+        .scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .scrollbar::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+
+        .scrollbar::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+
+        .scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #444;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="titlebar">
+            <div class="titlebar-left">
+                <div class="app-icon"></div>
+                <span class="app-title">Solana Synth Node</span>
+            </div>
+            <div class="titlebar-controls">
+                <button class="titlebar-btn btn-minimize" onclick="minimizeWindow()"></button>
+                <button class="titlebar-btn btn-close" onclick="closeWindow()"></button>
+            </div>
+        </div>
+
+        <div class="main-content scrollbar">
+            <div class="header">
+                <div class="logo">SOLANA SYNTH</div>
+                <div class="subtitle">Decentralized Synthetic Data Network</div>
+            </div>
+
+            <div class="status-section">
+                <div class="status-header">
+                    <div class="status-indicator">
+                        <div class="status-dot" id="statusDot"></div>
+                        <span class="status-text" id="statusText">OFFLINE</span>
+                    </div>
+                    <button class="toggle-btn" id="toggleBtn" onclick="toggleNode()" disabled>GO ONLINE</button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Earned</div>
+                        <div class="stat-value purple">
+                            <span id="totalEarned">0.000</span>
+                            <span class="stat-unit">SOL</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Compute Hours</div>
+                        <div class="stat-value">
+                            <span id="computeHours">0.0</span>
+                            <span class="stat-unit">hrs</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Tasks Completed</div>
+                        <div class="stat-value">
+                            <span id="tasksCompleted">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Uptime</div>
+                        <div class="stat-value">
+                            <span id="uptime">0.0</span>
+                            <span class="stat-unit">%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <div class="info-row">
+                    <span class="info-label">Node Tier</span>
+                    <span class="info-value"><span class="tier-badge" id="nodeTier">NOT DETECTED</span></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Pay Rate</span>
+                    <span class="info-value" id="payRate">Detect hardware first</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">CPU Cores</span>
+                    <span class="info-value" id="cpuCores">Detect hardware first</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">RAM</span>
+                    <span class="info-value" id="ram">Detect hardware first</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">GPU</span>
+                    <span class="info-value" id="gpu">Detect hardware first</span>
+                </div>
+                <div class="info-row" style="border-bottom: none; padding-top: 16px;">
+                    <button class="wallet-btn" id="detectBtn" onclick="detectHardware()" style="width: 100%;">DETECT HARDWARE</button>
+                </div>
+            </div>
+
+            <div class="wallet-section">
+                <div class="wallet-header">Solana Wallet</div>
+                <div class="wallet-address" id="walletAddress">Not connected</div>
+                <button class="wallet-btn" onclick="connectWallet()">CONNECT WALLET</button>
+            </div>
+
+            <div class="activity-log scrollbar">
+                <div class="activity-header">Activity Log</div>
+                <div id="activityLog">
+                    <div class="activity-item">
+                        <span class="activity-time">[--:--:--]</span>
+                        <span>Waiting for connection...</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer">
+                <div class="connection-status" id="connectionStatus">
+                    ● Connecting to network...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isOnline = false;
+        let ws = null;
+        let currentTier = null;
+        let hardwareDetected = false;
+        let payRates = {
+            low: 0,
+            high: 0
+        };
+        let stats = {
+            totalEarned: 0,
+            computeHours: 0,
+            tasksCompleted: 0,
+            uptime: 0
+        };
+
+        // Fetch current pay rates from server
+        async function fetchPayRates() {
+            try {
+                // In real implementation:
+                // const response = await fetch('https://api.solanasynth.io/v1/rates');
+                // const data = await response.json();
+                // payRates = data.rates;
+                
+                // Simulated API response
+                await new Promise(resolve => setTimeout(resolve, 500));
+                payRates = {
+                    low: 0.05,  // $0.05 per compute-hour
+                    high: 0.25  // $0.25 per compute-hour
+                };
+                
+                updatePayRateDisplay();
+                addLog('Pay rates updated from network');
+            } catch (error) {
+                addLog('Failed to fetch pay rates, using defaults');
+                payRates = { low: 0.05, high: 0.25 };
+                updatePayRateDisplay();
+            }
+        }
+
+        function updatePayRateDisplay() {
+            const rate = currentTier === 'high' ? payRates.high : payRates.low;
+            const rateText = currentTier ? `${rate.toFixed(2)}/hr` : '--';
+            document.getElementById('payRate').textContent = rateText;
+        }
+
+        // Simulate hardware detection
+        function detectHardware() {
+            if (hardwareDetected) {
+                addLog('Hardware already detected');
+                return;
+            }
+
+            const detectBtn = document.getElementById('detectBtn');
+            detectBtn.disabled = true;
+            detectBtn.textContent = 'DETECTING...';
+            
+            addLog('Starting hardware detection...');
+            
+            const cores = navigator.hardwareConcurrency || 8;
+            const ram = (navigator.deviceMemory || 16) + ' GB';
+            
+            document.getElementById('cpuCores').textContent = cores;
+            document.getElementById('ram').textContent = ram;
+            
+            addLog(`Detected ${cores} CPU cores`);
+            addLog(`Detected ${ram} RAM`);
+            
+            // Simulate GPU detection
+            setTimeout(() => {
+                const gpus = ['NVIDIA RTX 4090', 'NVIDIA RTX 3080', 'AMD RX 7900 XTX', 'Not Detected'];
+                const gpu = gpus[Math.floor(Math.random() * gpus.length)];
+                document.getElementById('gpu').textContent = gpu;
+                
+                addLog(`GPU: ${gpu}`);
+                
+                // Determine tier
+                const isHighTier = gpu.includes('NVIDIA') && cores >= 8;
+                currentTier = isHighTier ? 'high' : 'low';
+                const tierDisplay = isHighTier ? 'HIGH TIER' : 'LOW TIER';
+                document.getElementById('nodeTier').textContent = tierDisplay;
+                
+                hardwareDetected = true;
+                detectBtn.textContent = 'RE-DETECT HARDWARE';
+                detectBtn.disabled = false;
+                
+                updatePayRateDisplay();
+                addLog(`✓ Hardware detection complete`);
+                addLog(`✓ Assigned to ${tierDisplay}`);
+                
+                // Enable the toggle button now that hardware is detected
+                document.getElementById('toggleBtn').disabled = false;
+            }, 2000);
+        }
+
+        // Connect to server (simulated)
+        function connectToServer() {
+            // In real implementation, this would be a WebSocket connection
+            // ws = new WebSocket('wss://coordinator.solanasynth.io');
+            
+            setTimeout(() => {
+                document.getElementById('connectionStatus').textContent = '● Connected to network';
+                document.getElementById('connectionStatus').classList.add('connected');
+                addLog('Connected to Solana Synth network');
+            }, 2000);
+        }
+
+        function toggleNode() {
+            if (!hardwareDetected) {
+                addLog('Please detect hardware first');
+                return;
+            }
+            
+            isOnline = !isOnline;
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            const toggleBtn = document.getElementById('toggleBtn');
+            
+            if (isOnline) {
+                statusDot.classList.add('online');
+                statusText.classList.add('online');
+                statusText.textContent = 'ONLINE';
+                toggleBtn.classList.add('online');
+                toggleBtn.textContent = 'GO OFFLINE';
+                addLog('Node is now ONLINE and accepting tasks');
+                simulateActivity();
+            } else {
+                statusDot.classList.remove('online');
+                statusText.classList.remove('online');
+                statusText.textContent = 'OFFLINE';
+                toggleBtn.classList.remove('online');
+                toggleBtn.textContent = 'GO ONLINE';
+                addLog('Node is now OFFLINE');
+            }
+        }
+
+        function connectWallet() {
+            // Simulate wallet connection
+            const mockAddress = 'Aa1b' + Math.random().toString(36).substring(2, 15) + 'Zz9';
+            document.getElementById('walletAddress').textContent = mockAddress;
+            addLog('Wallet connected successfully');
+        }
+
+        function addLog(message) {
+            const time = new Date().toLocaleTimeString();
+            const logContainer = document.getElementById('activityLog');
+            const logItem = document.createElement('div');
+            logItem.className = 'activity-item';
+            logItem.innerHTML = `<span class="activity-time">[${time}]</span><span>${message}</span>`;
+            
+            logContainer.insertBefore(logItem, logContainer.firstChild);
+            
+            // Keep only last 10 items
+            while (logContainer.children.length > 10) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('totalEarned').textContent = stats.totalEarned.toFixed(3);
+            document.getElementById('computeHours').textContent = stats.computeHours.toFixed(1);
+            document.getElementById('tasksCompleted').textContent = stats.tasksCompleted;
+            document.getElementById('uptime').textContent = stats.uptime.toFixed(1);
+        }
+
+        function simulateActivity() {
+            if (!isOnline) return;
+            
+            // Simulate receiving a task
+            setTimeout(() => {
+                if (!isOnline) return;
+                addLog('Received task: Generate tabular dataset');
+                
+                // Simulate processing
+                setTimeout(() => {
+                    if (!isOnline) return;
+                    stats.tasksCompleted++;
+                    stats.computeHours += Math.random() * 0.5;
+                    stats.totalEarned += Math.random() * 0.002;
+                    stats.uptime = Math.min(99.9, stats.uptime + Math.random() * 2);
+                    updateStats();
+                    addLog('Task completed successfully');
+                    simulateActivity();
+                }, 5000 + Math.random() * 5000);
+            }, 3000 + Math.random() * 7000);
+        }
+
+        function minimizeWindow() {
+            addLog('Minimize requested');
+        }
+
+        function closeWindow() {
+            if (confirm('Are you sure you want to exit Solana Synth?')) {
+                addLog('Shutting down...');
+            }
+        }
+
+        // Initialize
+        connectToServer();
+        fetchPayRates();
+        
+        // Refresh pay rates every 5 minutes
+        setInterval(fetchPayRates, 300000);
+    </script>
+</body>
+</html>
